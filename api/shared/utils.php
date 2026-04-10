@@ -121,7 +121,7 @@ function sendWuPostRequestHelper(
 }
 
 function consoleLogger($message, $showTime = 1) {
-    if(php_sapi_name() != 'cli') return
+    if(php_sapi_name() != 'cli') return;
     $currTime = '';
     if($showTime) {
         $currTime = '['.date('Y-m-d H:i:s T', time()).'] ';
