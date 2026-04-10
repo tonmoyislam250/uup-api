@@ -25,6 +25,73 @@ function sortBySize($a, $b) {
     return ($files[$a]['size'] < $files[$b]['size']) ? -1 : 1;
 }
 
+function uupApiPrivateCreateArchive($currDir, $baseName, $entries) {
+    $tmpDir = $currDir.'/tmp';
+    if(!file_exists($tmpDir)) {
+        mkdir($tmpDir);
+    }
+
+    if(class_exists('ZipArchive')) {
+        $zip = new ZipArchive;
+        $archivePath = @tempnam($tmpDir, 'zip');
+        $open = $zip->open($archivePath, ZipArchive::CREATE+ZipArchive::OVERWRITE);
+
+        if($open !== TRUE) {
+            return ['error' => 'Failed to create archive.'];
+        }
+
+        foreach($entries as $entry) {
+            if($entry['type'] == 'string') {
+                $zip->addFromString($entry['local'], $entry['content']);
+            } else {
+                $zip->addFile($entry['path'], $entry['local']);
+            }
+        }
+
+        $zip->close();
+
+        return [
+            'path' => $archivePath,
+            'filename' => $baseName.'.zip',
+            'mime' => 'application/zip',
+        ];
+    }
+
+    if(!class_exists('PharData')) {
+        return ['error' => 'Failed to create archive: ZIP and PharData are unavailable.'];
+    }
+
+    try {
+        $archiveBase = $tmpDir.'/'.uniqid('pkg_', true);
+        $tarPath = $archiveBase.'.tar';
+        $tar = new PharData($tarPath);
+
+        foreach($entries as $entry) {
+            if($entry['type'] == 'string') {
+                $tar->addFromString($entry['local'], $entry['content']);
+            } else {
+                $tar->addFile($entry['path'], $entry['local']);
+            }
+        }
+
+        $tar->compress(Phar::GZ);
+        unset($tar);
+
+        $gzPath = $tarPath.'.gz';
+        if(file_exists($tarPath)) {
+            unlink($tarPath);
+        }
+
+        return [
+            'path' => $gzPath,
+            'filename' => $baseName.'.tar.gz',
+            'mime' => 'application/gzip',
+        ];
+    } catch(Throwable $e) {
+        return ['error' => 'Failed to create archive.'];
+    }
+}
+
 //Create aria2 download package with conversion script
 function createUupConvertPackage(
     $url,
@@ -326,28 +393,20 @@ CONFIG;
     $cmdScript = str_replace("\n", "\r\n", $cmdScript);
     $convertConfig = str_replace("\n", "\r\n", $convertConfig);
 
-    $zip = new ZipArchive;
-    $archive = @tempnam($currDir.'/tmp', 'zip');
-    $open = $zip->open($archive, ZipArchive::CREATE+ZipArchive::OVERWRITE);
-
-    if($open !== TRUE) {
-        echo 'Failed to create archive.';
-        die();
-    }
-
-    $zip->addFromString('uup_download_windows.cmd', $cmdScript);
-    $zip->addFromString('uup_download_linux.sh', $shellScript);
-    $zip->addFromString('uup_download_macos.sh', $shellScript);
-    $zip->addFromString('ConvertConfig.ini', $convertConfig);
-    $zip->addFromString('files/convert_config_linux', $convertConfigLinux);
-    $zip->addFromString('files/convert_config_macos', $convertConfigLinux);
-    $zip->addFile($currDir.'/public/autodl_files/readme.unix.md', 'readme.unix.md');
-    $zip->addFile($currDir.'/public/autodl_files/convert.sh', 'files/convert.sh');
-    $zip->addFile($currDir.'/public/autodl_files/convert_ve_plugin', 'files/convert_ve_plugin');
-    $zip->addFile($currDir.'/public/autodl_files/7zr.exe', 'files/7zr.exe');
-    $zip->addFile($currDir.'/public/autodl_files/aria2c.exe', 'files/aria2c.exe');
-    $zip->addFile($currDir.'/public/autodl_files/uup-converter-wimlib.7z', 'files/uup-converter-wimlib.7z');
-    $zip->close();
+    $entries = [
+        ['type' => 'string', 'local' => 'uup_download_windows.cmd', 'content' => $cmdScript],
+        ['type' => 'string', 'local' => 'uup_download_linux.sh', 'content' => $shellScript],
+        ['type' => 'string', 'local' => 'uup_download_macos.sh', 'content' => $shellScript],
+        ['type' => 'string', 'local' => 'ConvertConfig.ini', 'content' => $convertConfig],
+        ['type' => 'string', 'local' => 'files/convert_config_linux', 'content' => $convertConfigLinux],
+        ['type' => 'string', 'local' => 'files/convert_config_macos', 'content' => $convertConfigLinux],
+        ['type' => 'file', 'path' => $currDir.'/public/autodl_files/readme.unix.md', 'local' => 'readme.unix.md'],
+        ['type' => 'file', 'path' => $currDir.'/public/autodl_files/convert.sh', 'local' => 'files/convert.sh'],
+        ['type' => 'file', 'path' => $currDir.'/public/autodl_files/convert_ve_plugin', 'local' => 'files/convert_ve_plugin'],
+        ['type' => 'file', 'path' => $currDir.'/public/autodl_files/7zr.exe', 'local' => 'files/7zr.exe'],
+        ['type' => 'file', 'path' => $currDir.'/public/autodl_files/aria2c.exe', 'local' => 'files/aria2c.exe'],
+        ['type' => 'file', 'path' => $currDir.'/public/autodl_files/uup-converter-wimlib.7z', 'local' => 'files/uup-converter-wimlib.7z'],
+    ];
 
     if($virtualEditions) {
         $suffix = '_virtual';
@@ -355,12 +414,18 @@ CONFIG;
         $suffix = '';
     }
 
-    header('Content-Type: archive/zip');
-    header('Content-Disposition: attachment; filename="'.$archiveName."_convert$suffix.zip\"");
-    header('Content-Length: '.filesize($archive));
+    $archive = uupApiPrivateCreateArchive($currDir, $archiveName."_convert$suffix", $entries);
+    if(isset($archive['error'])) {
+        echo $archive['error'];
+        die();
+    }
 
-    $content = file_get_contents($archive);
-    unlink($archive);
+    header('Content-Type: '.$archive['mime']);
+    header('Content-Disposition: attachment; filename="'.$archive['filename'].'"');
+    header('Content-Length: '.filesize($archive['path']));
+
+    $content = file_get_contents($archive['path']);
+    unlink($archive['path']);
 
     echo $content;
 }
@@ -530,28 +595,26 @@ SCRIPT;
     $shellScript = str_replace(["\r\n", "\r"], "\n", $shellScript);
     $cmdScript = str_replace("\n", "\r\n", $cmdScript);
 
-    $zip = new ZipArchive;
-    $archive = @tempnam($currDir.'/tmp', 'zip');
-    $open = $zip->open($archive, ZipArchive::CREATE+ZipArchive::OVERWRITE);
+    $entries = [
+        ['type' => 'string', 'local' => 'uup_download_windows.cmd', 'content' => $cmdScript],
+        ['type' => 'string', 'local' => 'uup_download_linux.sh', 'content' => $shellScript],
+        ['type' => 'string', 'local' => 'uup_download_macos.sh', 'content' => $shellScript],
+        ['type' => 'file', 'path' => $currDir.'/public/autodl_files/readme.unix.md', 'local' => 'readme.unix.md'],
+        ['type' => 'file', 'path' => $currDir.'/public/autodl_files/aria2c.exe', 'local' => 'files/aria2c.exe'],
+    ];
 
-    if($open === TRUE) {
-        $zip->addFromString('uup_download_windows.cmd', $cmdScript);
-        $zip->addFromString('uup_download_linux.sh', $shellScript);
-        $zip->addFromString('uup_download_macos.sh', $shellScript);
-        $zip->addFile($currDir.'/public/autodl_files/readme.unix.md', 'readme.unix.md');
-        $zip->addFile($currDir.'/public/autodl_files/aria2c.exe', 'files/aria2c.exe');
-        $zip->close();
-    } else {
-        echo 'Failed to create archive.';
+    $archive = uupApiPrivateCreateArchive($currDir, $archiveName, $entries);
+    if(isset($archive['error'])) {
+        echo $archive['error'];
         die();
     }
 
-    header('Content-Type: archive/zip');
-    header('Content-Disposition: attachment; filename="'.$archiveName.'.zip"');
-    header('Content-Length: '.filesize($archive));
+    header('Content-Type: '.$archive['mime']);
+    header('Content-Disposition: attachment; filename="'.$archive['filename'].'"');
+    header('Content-Length: '.filesize($archive['path']));
 
-    $content = file_get_contents($archive);
-    unlink($archive);
+    $content = file_get_contents($archive['path']);
+    unlink($archive['path']);
 
     echo $content;
 }

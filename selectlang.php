@@ -48,10 +48,137 @@ function uupApiPrivateEnsureBuildFileinfo($updateId, $updateInfo) {
     ];
 
     $fetched = uupFetchUpd2($params, 1);
-    if(isset($fetched['error'])) {
+    if(!isset($fetched['error']) && uupApiFileInfoExists($updateId)) {
+        return true;
+    }
+
+    return uupApiPrivateImportRemoteFileinfo($updateId, $updateInfo);
+}
+
+function uupApiPrivateResolvePackSourceId($updateId, $updateInfo) {
+    if(empty($updateInfo['build'])) {
+        return $updateId;
+    }
+
+    $builds = uupListIds($updateInfo['build']);
+    if(isset($builds['error']) || empty($builds['builds'])) {
+        return $updateId;
+    }
+
+    $arch = isset($updateInfo['arch']) ? $updateInfo['arch'] : null;
+    $fallbackId = $updateId;
+
+    foreach($builds['builds'] as $val) {
+        if(!isset($val['uuid']) || !isset($val['title'])) {
+            continue;
+        }
+
+        if($arch && isset($val['arch']) && $val['arch'] != $arch) {
+            continue;
+        }
+
+        if($val['uuid'] == $updateId) {
+            $fallbackId = $val['uuid'];
+        }
+
+        if(preg_match('/Cumulative Update/i', $val['title'])) {
+            return $val['uuid'];
+        }
+    }
+
+    return $fallbackId;
+}
+
+function uupApiPrivateImportRemoteFileinfo($updateId, $updateInfo) {
+    $url = 'https://uupdump.net/json-api/get.php?id='.rawurlencode($updateId);
+
+    $req = curl_init($url);
+    curl_setopt($req, CURLOPT_HEADER, 0);
+    curl_setopt($req, CURLOPT_RETURNTRANSFER, 1);
+    curl_setopt($req, CURLOPT_ENCODING, '');
+    curl_setopt($req, CURLOPT_FOLLOWLOCATION, 1);
+    curl_setopt($req, CURLOPT_CONNECTTIMEOUT, 5);
+    curl_setopt($req, CURLOPT_TIMEOUT, 25);
+    curl_setopt($req, CURLOPT_SSL_VERIFYPEER, 0);
+    curl_setopt($req, CURLOPT_HTTPHEADER, [
+        'User-Agent: UUP dump self-host fileinfo import',
+        'Accept: application/json',
+    ]);
+
+    $out = curl_exec($req);
+    $code = curl_getinfo($req, CURLINFO_RESPONSE_CODE);
+    curl_close($req);
+
+    if($out === false || $code !== 200) {
         return false;
     }
 
+    $data = json_decode($out, true);
+    if(!is_array($data)) {
+        return false;
+    }
+
+    if(isset($data['response']) && is_array($data['response'])) {
+        $data = $data['response'];
+    }
+
+    if(isset($data['error']) || !isset($data['files']) || !is_array($data['files'])) {
+        return false;
+    }
+
+    $files = [];
+    $sha256ready = true;
+
+    foreach($data['files'] as $name => $fileInfo) {
+        if(!isset($fileInfo['sha1'])) {
+            continue;
+        }
+
+        $sha1 = strtolower($fileInfo['sha1']);
+        $sha256 = isset($fileInfo['sha256']) ? strtolower($fileInfo['sha256']) : null;
+        if(!$sha256) {
+            $sha256ready = false;
+        }
+
+        $files[$sha1] = [
+            'name' => $name,
+            'size' => isset($fileInfo['size']) ? intval($fileInfo['size']) : 0,
+            'sha256' => $sha256,
+        ];
+    }
+
+    if(empty($files)) {
+        return false;
+    }
+
+    $build = isset($data['build']) ? $data['build'] : (isset($updateInfo['build']) ? $updateInfo['build'] : null);
+    $checkBuild = $build;
+    if($checkBuild && !preg_match('/^\d+\.\d+\.\d+\.\d+$/', $checkBuild)) {
+        $checkBuild = '10.0.'.$checkBuild;
+    }
+
+    $fullInfo = [
+        'title' => isset($data['updateName']) ? $data['updateName'] : (isset($updateInfo['title']) ? $updateInfo['title'] : 'Unknown update: '.$updateId),
+        'ring' => isset($updateInfo['ring']) ? $updateInfo['ring'] : 'RETAIL',
+        'flight' => isset($updateInfo['flight']) ? $updateInfo['flight'] : 'Active',
+        'arch' => isset($data['arch']) ? $data['arch'] : (isset($updateInfo['arch']) ? $updateInfo['arch'] : 'amd64'),
+        'fetchArch' => isset($data['arch']) ? $data['arch'] : (isset($updateInfo['arch']) ? $updateInfo['arch'] : 'amd64'),
+        'build' => $build,
+        'checkBuild' => $checkBuild,
+        'sku' => isset($data['sku']) ? intval($data['sku']) : (isset($updateInfo['sku']) ? intval($updateInfo['sku']) : 48),
+        'created' => isset($updateInfo['created']) ? intval($updateInfo['created']) : time(),
+        'files' => $files,
+    ];
+
+    if($sha256ready) {
+        $fullInfo['sha256ready'] = true;
+    }
+
+    if(preg_match('/Cumulative Update/i', $fullInfo['title'])) {
+        $fullInfo['containsCU'] = 1;
+    }
+
+    uupApiWriteFileinfo($updateId, $fullInfo);
     return uupApiFileInfoExists($updateId);
 }
 
@@ -85,6 +212,13 @@ if(!checkUpdateIdValidity($updateId)) {
 
 $updateInfo = uupUpdateInfo($updateId, ignoreFiles: true);
 $updateInfo = isset($updateInfo['info']) ? $updateInfo['info'] : array();
+
+$packSourceId = uupApiPrivateResolvePackSourceId($updateId, $updateInfo);
+if($packSourceId != $updateId) {
+    $updateId = $packSourceId;
+    $updateInfo = uupUpdateInfo($updateId, ignoreFiles: true);
+    $updateInfo = isset($updateInfo['info']) ? $updateInfo['info'] : array();
+}
 
 if($getPacks || !uupApiPacksExist($updateId)) {
     uupApiPrivateEnsureBuildFileinfo($updateId, $updateInfo);
