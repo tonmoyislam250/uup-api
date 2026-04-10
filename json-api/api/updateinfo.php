@@ -18,9 +18,69 @@ limitations under the License.
 require_once dirname(__FILE__).'/shared/main.php';
 require_once dirname(__FILE__).'/shared/cache.php';
 require_once dirname(__FILE__).'/shared/fileinfo.php';
+require_once dirname(__FILE__).'/listid.php';
+
+function uupApiPrivateBuildInfoFromKnownList($updateId) {
+    $ids = uupListIds();
+
+    if(isset($ids['error']) || empty($ids['builds'])) {
+        return false;
+    }
+
+    foreach($ids['builds'] as $val) {
+        if(!isset($val['uuid']) || $val['uuid'] != $updateId) {
+            continue;
+        }
+
+        $title = isset($val['title']) ? $val['title'] : 'Unknown update: '.$updateId;
+        $build = isset($val['build']) ? $val['build'] : null;
+        $arch = isset($val['arch']) ? $val['arch'] : 'amd64';
+        $created = isset($val['created']) ? $val['created'] : time();
+
+        $ring = 'RETAIL';
+        $flight = 'Active';
+
+        if(preg_match('/Insider/i', $title)) {
+            $ring = 'WIF';
+
+            if(preg_match('/Beta/i', $title)) {
+                $ring = 'WIS';
+            } elseif(preg_match('/Release Preview|RP/i', $title)) {
+                $ring = 'RP';
+            }
+        }
+
+        $checkBuild = $build;
+        if($checkBuild && !preg_match('/^\d+\.\d+\.\d+\.\d+$/', $checkBuild)) {
+            $checkBuild = '10.0.'.$checkBuild;
+        }
+
+        return [
+            'title' => $title,
+            'build' => $build,
+            'arch' => $arch,
+            'checkBuild' => $checkBuild,
+            'ring' => $ring,
+            'flight' => $flight,
+            'sku' => 48,
+            'created' => $created,
+        ];
+    }
+
+    return false;
+}
 
 function uupUpdateInfo($updateId, $onlyInfo = 0, $ignoreFiles = false) {
     $info = uupApiReadFileinfo($updateId, $ignoreFiles);
+
+    if($info === false) {
+        $info = uupApiPrivateBuildInfoFromKnownList($updateId);
+
+        if($info !== false) {
+            uupApiWriteFileinfoMeta($updateId, $info);
+        }
+    }
+
     if($info === false) {
         return ['error' => 'UPDATE_INFORMATION_NOT_EXISTS'];
     }

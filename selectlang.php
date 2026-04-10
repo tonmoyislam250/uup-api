@@ -19,43 +19,40 @@ $updateId = isset($_GET['id']) ? $_GET['id'] : 0;
 $getPacks = isset($_GET['packs']) ? $_GET['packs'] : 0;
 
 require_once 'api/listlangs.php';
+require_once 'api/fetchupd.php';
 require_once 'api/updateinfo.php';
 require_once 'shared/style.php';
 require_once 'shared/utils.php';
 require_once dirname(__FILE__).'/sta/main.php';
 require_once dirname(__FILE__).'/sta/genpack.php';
 
-function resolveFeatureUpdateId($updateId, $updateInfo) {
-    if(empty($updateInfo['title']) || empty($updateInfo['build'])) {
-        return $updateId;
+function uupApiPrivateEnsureBuildFileinfo($updateId, $updateInfo) {
+    if(uupApiFileInfoExists($updateId)) {
+        return true;
     }
 
-    if(!preg_match('/Cumulative Update/i', $updateInfo['title'])) {
-        return $updateId;
+    if(empty($updateInfo['build'])) {
+        return false;
     }
 
-    $builds = uupListIds($updateInfo['build']);
-    if(isset($builds['error']) || empty($builds['builds'])) {
-        return $updateId;
+    $params = [
+        'arch' => isset($updateInfo['arch']) ? $updateInfo['arch'] : 'amd64',
+        'ring' => isset($updateInfo['ring']) ? $updateInfo['ring'] : 'RETAIL',
+        'flight' => isset($updateInfo['flight']) ? $updateInfo['flight'] : 'Active',
+        'branch' => 'auto',
+        'build' => $updateInfo['build'],
+        'minor' => 0,
+        'sku' => isset($updateInfo['sku']) ? intval($updateInfo['sku']) : 48,
+        'type' => isset($updateInfo['releasetype']) ? $updateInfo['releasetype'] : 'Production',
+        'flags' => isset($updateInfo['flags']) && is_array($updateInfo['flags']) ? $updateInfo['flags'] : [],
+    ];
+
+    $fetched = uupFetchUpd2($params, 1);
+    if(isset($fetched['error'])) {
+        return false;
     }
 
-    foreach($builds['builds'] as $val) {
-        if(empty($val['title']) || empty($val['uuid'])) {
-            continue;
-        }
-
-        if(!preg_match('/Feature update/i', $val['title'])) {
-            continue;
-        }
-
-        if(isset($updateInfo['arch']) && isset($val['arch']) && $updateInfo['arch'] != $val['arch']) {
-            continue;
-        }
-
-        return $val['uuid'];
-    }
-
-    return $updateId;
+    return uupApiFileInfoExists($updateId);
 }
 
 function getLangs($updateId, $s) {
@@ -89,14 +86,8 @@ if(!checkUpdateIdValidity($updateId)) {
 $updateInfo = uupUpdateInfo($updateId, ignoreFiles: true);
 $updateInfo = isset($updateInfo['info']) ? $updateInfo['info'] : array();
 
-$resolvedUpdateId = resolveFeatureUpdateId($updateId, $updateInfo);
-if($resolvedUpdateId != $updateId) {
-    $updateId = $resolvedUpdateId;
-    $updateInfo = uupUpdateInfo($updateId, ignoreFiles: true);
-    $updateInfo = isset($updateInfo['info']) ? $updateInfo['info'] : array();
-}
-
-if($getPacks) {
+if($getPacks || !uupApiPacksExist($updateId)) {
+    uupApiPrivateEnsureBuildFileinfo($updateId, $updateInfo);
     generatePack($updateId);
     $updateInfo = uupUpdateInfo($updateId, ignoreFiles: true);
     $updateInfo = isset($updateInfo['info']) ? $updateInfo['info'] : array();
