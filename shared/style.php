@@ -100,9 +100,9 @@ EOD;
 
     $darkMode = '';
     if($enableDarkMode == 1) {
-        $darkMode = '<link rel="stylesheet" href="/css/darkmode.css">'."\n";
+        $darkMode = '<link rel="stylesheet" href="'.$baseUrl.'/uup-api/css/darkmode.css">'."\n";
     } elseif($enableDarkMode < 0) {
-        $darkMode = '<style>@import url(\'/css/darkmode.css\') (prefers-color-scheme: dark);</style>';
+        $darkMode = '<style>@import url(\''.$baseUrl.'/uup-api/css/darkmode.css\') (prefers-color-scheme: dark);</style>';
     }
 
     switch ($pageType) {
@@ -155,14 +155,14 @@ EOD;
         <meta property="og:title" content="$subTitleOnly">
         <meta property="og:type" content="website">
         <meta property="og:description" content="$description">
-        <meta property="og:image" content="$baseUrl/img/cover.png">
+        <meta property="og:image" content="$baseUrl/uup-api/img/cover.png">
         <meta property="og:url" content="$fullUrl">
 
-        <link rel="stylesheet" href="/css/semantic.min.css">
-        <link rel="stylesheet" href="/css/style.css">
+        <link rel="stylesheet" href="$baseUrl/uup-api/css/semantic.min.css">
+        <link rel="stylesheet" href="$baseUrl/uup-api/css/style.css">
 
-        <script src="/js/jquery.min.js"></script>
-        <script src="/js/semantic.min.js"></script>
+        <script src="$baseUrl/uup-api/js/jquery.min.js"></script>
+        <script src="$baseUrl/uup-api/js/semantic.min.js"></script>
 
         <title>$title</title>
 
@@ -191,7 +191,7 @@ EOD;
             <div class="page-header">
                 <div class="ui title container">
                     <h1 title="{$s['uupdump']} v$websiteVersion">
-                        <img src="/img/logo.svg" class="logo" alt="">{$s['uupdump']}
+                        <img src="$baseUrl/uup-api/img/logo.svg" class="logo" alt="">{$s['uupdump']}
                     </h1>
                 </div>
 
