@@ -1,5 +1,5 @@
 <?php
-function checkIfUserIsRateLimited($resource, $timeLimit = 10, $currentResLimit = 1) {
+function checkIfUserIsRateLimited($resource, $timeLimit = 0, $currentResLimit = 0) {
     $clientIP = $_SERVER['REMOTE_ADDR'];
     $ipHash = hash('sha256', "ratelimits-$clientIP");
 
