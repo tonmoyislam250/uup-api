@@ -26,6 +26,32 @@ require_once 'shared/utils.php';
 require_once dirname(__FILE__).'/sta/main.php';
 require_once dirname(__FILE__).'/sta/genpack.php';
 
+function uupApiPrivateGenMarkerPath($updateId) {
+    if(!file_exists('cache')) mkdir('cache');
+    return 'cache/selectlang-gen-'.strtolower($updateId).'.lock';
+}
+
+function uupApiPrivateWasRecentlyGenerated($updateId, $cooldown = 300) {
+    $marker = uupApiPrivateGenMarkerPath($updateId);
+    if(!file_exists($marker)) {
+        return false;
+    }
+
+    return (time() - filemtime($marker)) < $cooldown;
+}
+
+function uupApiPrivateMarkGenerationAttempt($updateId) {
+    $marker = uupApiPrivateGenMarkerPath($updateId);
+    @touch($marker);
+}
+
+function uupApiPrivateClearGenerationMarker($updateId) {
+    $marker = uupApiPrivateGenMarkerPath($updateId);
+    if(file_exists($marker)) {
+        @unlink($marker);
+    }
+}
+
 function uupApiPrivateEnsureBuildFileinfo($updateId, $updateInfo) {
     if(uupApiFileInfoExists($updateId)) {
         return true;
@@ -47,15 +73,23 @@ function uupApiPrivateEnsureBuildFileinfo($updateId, $updateInfo) {
         'flags' => isset($updateInfo['flags']) && is_array($updateInfo['flags']) ? $updateInfo['flags'] : [],
     ];
 
+    if(uupApiPrivateImportRemoteFileinfo($updateId, $updateInfo)) {
+        return true;
+    }
+
     $fetched = uupFetchUpd2($params, 1);
     if(!isset($fetched['error']) && uupApiFileInfoExists($updateId)) {
         return true;
     }
 
-    return uupApiPrivateImportRemoteFileinfo($updateId, $updateInfo);
+    return false;
 }
 
 function uupApiPrivateResolvePackSourceId($updateId, $updateInfo) {
+    if(uupApiPacksExist($updateId)) {
+        return $updateId;
+    }
+
     if(empty($updateInfo['build'])) {
         return $updateId;
     }
@@ -125,8 +159,8 @@ function uupApiPrivateImportRemoteFileinfo($updateId, $updateInfo) {
     curl_setopt($req, CURLOPT_RETURNTRANSFER, 1);
     curl_setopt($req, CURLOPT_ENCODING, '');
     curl_setopt($req, CURLOPT_FOLLOWLOCATION, 1);
-    curl_setopt($req, CURLOPT_CONNECTTIMEOUT, 5);
-    curl_setopt($req, CURLOPT_TIMEOUT, 25);
+    curl_setopt($req, CURLOPT_CONNECTTIMEOUT, 4);
+    curl_setopt($req, CURLOPT_TIMEOUT, 12);
     curl_setopt($req, CURLOPT_SSL_VERIFYPEER, 0);
     curl_setopt($req, CURLOPT_HTTPHEADER, [
         'User-Agent: UUP dump self-host fileinfo import',
@@ -248,9 +282,19 @@ if($packSourceId != $updateId) {
     $updateInfo = isset($updateInfo['info']) ? $updateInfo['info'] : array();
 }
 
-if($getPacks || !uupApiPacksExist($updateId)) {
+$packsMissing = !uupApiPacksExist($updateId);
+$shouldGenerate = $getPacks || ($packsMissing && !uupApiPrivateWasRecentlyGenerated($updateId));
+
+if($shouldGenerate) {
+    uupApiPrivateMarkGenerationAttempt($updateId);
+
     uupApiPrivateEnsureBuildFileinfo($updateId, $updateInfo);
     generatePack($updateId);
+
+    if(uupApiPacksExist($updateId)) {
+        uupApiPrivateClearGenerationMarker($updateId);
+    }
+
     $updateInfo = uupUpdateInfo($updateId, ignoreFiles: true);
     $updateInfo = isset($updateInfo['info']) ? $updateInfo['info'] : array();
 }
