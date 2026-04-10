@@ -40,8 +40,8 @@ $perPage = 100;
 $pages = ceil($count / $perPage);
 $startItem = ($page - 1) * $perPage;
 
-$prevPageUrl = ($page != 1) ? getUrlWithoutParam('p').'p='.$page - 1 : '';
-$nextPageUrl = ($page != $pages) ? getUrlWithoutParam('p').'p='.$page + 1 : '';
+$prevPageUrl = ($page != 1) ? getUrlWithoutParam('p').'p='.($page - 1) : '';
+$nextPageUrl = ($page != $pages) ? getUrlWithoutParam('p').'p='.($page + 1) : '';
 
 if($page < 1 || $page > $pages) {
     fancyError('INVALID_PAGE', 'downloads');
