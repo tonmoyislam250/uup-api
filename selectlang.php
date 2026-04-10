@@ -66,7 +66,11 @@ function uupApiPrivateResolvePackSourceId($updateId, $updateInfo) {
     }
 
     $arch = isset($updateInfo['arch']) ? $updateInfo['arch'] : null;
+    $title = isset($updateInfo['title']) ? $updateInfo['title'] : '';
+
     $fallbackId = $updateId;
+    $preferredSibling = null;
+    $secondarySibling = null;
 
     foreach($builds['builds'] as $val) {
         if(!isset($val['uuid']) || !isset($val['title'])) {
@@ -79,10 +83,34 @@ function uupApiPrivateResolvePackSourceId($updateId, $updateInfo) {
 
         if($val['uuid'] == $updateId) {
             $fallbackId = $val['uuid'];
+            continue;
         }
 
         if(preg_match('/Cumulative Update/i', $val['title'])) {
             return $val['uuid'];
+        }
+
+        if(uupApiPacksExist($val['uuid'])) {
+            return $val['uuid'];
+        }
+
+        if(preg_match('/^Update for Windows|^Security Update for|^Update for Microsoft server operating system/i', $val['title'])) {
+            $preferredSibling = $val['uuid'];
+            continue;
+        }
+
+        if(preg_match('/^Feature update to/i', $val['title'])) {
+            $secondarySibling = $val['uuid'];
+        }
+    }
+
+    if(preg_match('/version\s+\d{2}H\d|version\s+\d+\.\d+/i', $title)) {
+        if($preferredSibling) {
+            return $preferredSibling;
+        }
+
+        if($secondarySibling) {
+            return $secondarySibling;
         }
     }
 
