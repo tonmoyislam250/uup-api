@@ -1,14 +1,14 @@
 <?php
-$webApiVersion = '0.2.3';
+// Website information
+$websiteVersion = '1.8.2-dev';
+// $requiredApi = '1.44.0';
 
-function sendResponse($apiResponse) {
-    global $webApiVersion;
+require_once dirname(__FILE__).'/../api/shared/main.php';
+require_once dirname(__FILE__).'/utils.php';
+require_once dirname(__FILE__).'/lang.php';
 
-    $response = [
-        'response' => $apiResponse,
-        'jsonApiVersion' => $webApiVersion,
-    ];
+// Do check of API
+// checkApi();
 
-    header('Access-Control-Allow-Origin: *');
-    echo json_encode($response)."\n";
-}
+$s['uupdump'] = 'UUP dump app';
+$s['uupdumpSub'] = '%s - UUP dump app';
