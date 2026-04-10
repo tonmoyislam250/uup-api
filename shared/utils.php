@@ -17,6 +17,42 @@ limitations under the License.
 
 require_once 'api/shared/utils.php';
 
+function isHttpsRequest() {
+    if(isset($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
+        $proto = strtolower(trim(explode(',', $_SERVER['HTTP_X_FORWARDED_PROTO'])[0]));
+        if($proto === 'https') {
+            return true;
+        }
+    }
+
+    if(isset($_SERVER['HTTP_X_FORWARDED_SSL'])) {
+        $forwardedSsl = strtolower(trim($_SERVER['HTTP_X_FORWARDED_SSL']));
+        if($forwardedSsl === 'on' || $forwardedSsl === '1') {
+            return true;
+        }
+    }
+
+    if(isset($_SERVER['HTTPS'])) {
+        $https = strtolower((string) $_SERVER['HTTPS']);
+        if($https === 'on' || $https === '1') {
+            return true;
+        }
+    }
+
+    if(isset($_SERVER['SERVER_PORT']) && intval($_SERVER['SERVER_PORT']) === 443) {
+        return true;
+    }
+
+    return false;
+}
+
+function getBasePath() {
+    $scriptName = isset($_SERVER['SCRIPT_NAME']) ? $_SERVER['SCRIPT_NAME'] : '';
+    $basePath = rtrim(str_replace('\\', '/', dirname($scriptName)), '/');
+
+    return $basePath === '.' ? '' : $basePath;
+}
+
 function checkApi() {
     global $requiredApi;
     $apiVer = parseSemVer(uupApiVersion());
@@ -80,15 +116,19 @@ function checkUpdateIdValidity($updateId) {
 }
 
 function getBaseUrl() {
-    $baseUrl = '';
-    if(isset($_SERVER['HTTPS'])) {
-        $baseUrl .= 'https://';
+    $scheme = isHttpsRequest() ? 'https://' : 'http://';
+
+    if(isset($_SERVER['HTTP_X_FORWARDED_HOST']) && $_SERVER['HTTP_X_FORWARDED_HOST'] !== '') {
+        $host = trim(explode(',', $_SERVER['HTTP_X_FORWARDED_HOST'])[0]);
+    } elseif(isset($_SERVER['HTTP_HOST']) && $_SERVER['HTTP_HOST'] !== '') {
+        $host = $_SERVER['HTTP_HOST'];
+    } elseif(isset($_SERVER['SERVER_NAME']) && $_SERVER['SERVER_NAME'] !== '') {
+        $host = $_SERVER['SERVER_NAME'];
     } else {
-        $baseUrl .= 'http://';
+        $host = 'localhost';
     }
 
-    $baseUrl .=  $_SERVER['HTTP_HOST'];
-    return $baseUrl;
+    return $scheme.$host;
 }
 
 function getUrlWithoutParam($param = null) {

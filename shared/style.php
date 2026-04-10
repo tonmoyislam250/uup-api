@@ -41,7 +41,7 @@ function styleUpper($pageType = 'home', $subtitle = '') {
         'expires' => time()+60*60*24*30,
         'path' => '/',
         'domain' => $domain,
-        'secure' => isset($_SERVER['HTTPS']) ? true : false,
+        'secure' => isHttpsRequest(),
         'httponly' => true,
         'samesite' => 'Strict'
     );
@@ -84,6 +84,7 @@ function styleUpper($pageType = 'home', $subtitle = '') {
     }
 
     $baseUrl = getBaseUrl();
+    $basePath = getBasePath();
     $fullUrl = htmlentities(getBaseUrl().$_SERVER['REQUEST_URI']);
     $url = htmlentities(getUrlWithoutParam('dark'));
 
@@ -100,9 +101,9 @@ EOD;
 
     $darkMode = '';
     if($enableDarkMode == 1) {
-        $darkMode = '<link rel="stylesheet" href="'.$baseUrl.'/uup-api/css/darkmode.css">'."\n";
+        $darkMode = '<link rel="stylesheet" href="'.$basePath.'/css/darkmode.css">'."\n";
     } elseif($enableDarkMode < 0) {
-        $darkMode = '<style>@import url(\''.$baseUrl.'/uup-api/css/darkmode.css\') (prefers-color-scheme: dark);</style>';
+        $darkMode = '<style>@import url(\''.$basePath.'/css/darkmode.css\') (prefers-color-scheme: dark);</style>';
     }
 
     switch ($pageType) {
@@ -155,14 +156,14 @@ EOD;
         <meta property="og:title" content="$subTitleOnly">
         <meta property="og:type" content="website">
         <meta property="og:description" content="$description">
-        <meta property="og:image" content="$baseUrl/uup-api/img/cover.png">
+        <meta property="og:image" content="$baseUrl$basePath/img/cover.png">
         <meta property="og:url" content="$fullUrl">
 
-        <link rel="stylesheet" href="$baseUrl/uup-api/css/semantic.min.css">
-        <link rel="stylesheet" href="$baseUrl/uup-api/css/style.css">
+        <link rel="stylesheet" href="$basePath/css/semantic.min.css">
+        <link rel="stylesheet" href="$basePath/css/style.css">
 
-        <script src="$baseUrl/uup-api/js/jquery.min.js"></script>
-        <script src="$baseUrl/uup-api/js/semantic.min.js"></script>
+        <script src="$basePath/js/jquery.min.js"></script>
+        <script src="$basePath/js/semantic.min.js"></script>
 
         <title>$title</title>
 
@@ -191,7 +192,7 @@ EOD;
             <div class="page-header">
                 <div class="ui title container">
                     <h1 title="{$s['uupdump']} v$websiteVersion">
-                        <img src="$baseUrl/uup-api/img/logo.svg" class="logo" alt="">{$s['uupdump']}
+                        <img src="$basePath/img/logo.svg" class="logo" alt="">{$s['uupdump']}
                     </h1>
                 </div>
 

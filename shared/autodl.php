@@ -146,13 +146,7 @@ class AutoDlConfig {
         $usePack = $this->usePack;
         $desiredEdition = $this->desiredEdition;
 
-        if(isset($_SERVER['HTTPS'])) {
-            $url = 'https://';
-        } else {
-            $url = 'http://';
-        }
-
-        $url .=  $_SERVER['HTTP_HOST'].$_SERVER['PHP_SELF'];
+        $url = getBaseUrl().$_SERVER['PHP_SELF'];
         $app = $url;
 
         $url .= '?id='.$updateId.'&pack='.$usePack.'&edition='.$desiredEdition.'&aria2=2';
