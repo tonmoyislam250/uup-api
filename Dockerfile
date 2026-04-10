@@ -7,8 +7,6 @@ RUN apt-get update && apt-get install -y \
     unzip \
     ca-certificates \
     && docker-php-ext-install zip \
-    && (a2dismod mpm_event mpm_worker || true) \
-    && a2enmod mpm_prefork \
     && a2enmod rewrite \
     && rm -rf /var/lib/apt/lists/*
 
@@ -21,6 +19,9 @@ RUN mkdir -p /var/www/html/cache \
     /var/www/html/packs \
     /var/www/html/uuptmp \
     /var/www/html/tmp \
-    && chown -R www-data:www-data /var/www/html
+    && chown -R www-data:www-data /var/www/html \
+    && chmod +x /var/www/html/start-apache.sh
 
 EXPOSE 80
+
+CMD ["/var/www/html/start-apache.sh"]
