@@ -7,6 +7,8 @@ RUN apt-get update && apt-get install -y \
     unzip \
     ca-certificates \
     && docker-php-ext-install zip \
+    && (a2dismod mpm_event mpm_worker || true) \
+    && a2enmod mpm_prefork \
     && a2enmod rewrite \
     && rm -rf /var/lib/apt/lists/*
 
