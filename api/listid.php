@@ -22,9 +22,101 @@ require_once dirname(__FILE__).'/shared/fileinfo.php';
 function uupApiPrivateInvalidateFileinfoCache() {
     $cache1 = new UupDumpCache('listid-0', false);
     $cache2 = new UupDumpCache('listid-1', false);
+    $cache3 = new UupDumpCache('listid-remote-0', false);
+    $cache4 = new UupDumpCache('listid-remote-1', false);
 
     $cache1->delete();
     $cache2->delete();
+    $cache3->delete();
+    $cache4->delete();
+}
+
+function uupApiPrivateGetFromRemote($search = null, $sortByDate = 0) {
+    $params = [
+        'sortByDate' => $sortByDate ? 1 : 0,
+    ];
+
+    if($search !== null && $search !== '') {
+        $params['search'] = $search;
+    }
+
+    $url = 'https://uupdump.net/json-api/listid.php?'.http_build_query($params);
+
+    $req = curl_init($url);
+    curl_setopt($req, CURLOPT_HEADER, 0);
+    curl_setopt($req, CURLOPT_RETURNTRANSFER, 1);
+    curl_setopt($req, CURLOPT_ENCODING, '');
+    curl_setopt($req, CURLOPT_FOLLOWLOCATION, 1);
+    curl_setopt($req, CURLOPT_CONNECTTIMEOUT, 5);
+    curl_setopt($req, CURLOPT_TIMEOUT, 15);
+    curl_setopt($req, CURLOPT_SSL_VERIFYPEER, 0);
+    curl_setopt($req, CURLOPT_HTTPHEADER, [
+        'User-Agent: UUP dump self-host listid proxy',
+        'Accept: application/json',
+    ]);
+
+    $out = curl_exec($req);
+    $code = curl_getinfo($req, CURLINFO_RESPONSE_CODE);
+    curl_close($req);
+
+    if($out === false || $code !== 200) {
+        return false;
+    }
+
+    $data = json_decode($out, true);
+    if(!is_array($data)) {
+        return false;
+    }
+
+    if(isset($data['response']) && is_array($data['response'])) {
+        $data = $data['response'];
+    }
+
+    if(isset($data['error'])) {
+        return ['error' => $data['error']];
+    }
+
+    if(!isset($data['builds']) || !is_array($data['builds'])) {
+        return false;
+    }
+
+    return array_values($data['builds']);
+}
+
+function uupApiPrivateNormalizeKnownQuery($search) {
+    if($search === null) {
+        return null;
+    }
+
+    if(!preg_match('/^category:/i', $search)) {
+        return $search;
+    }
+
+    $category = strtolower(preg_replace('/^category:/i', '', $search));
+
+    $map = [
+        'canary' => 'regex:Insider.*(2((2(?!000|6[2-4][1-9])\d{3})|(5(?!398)\d{3})|[6-9]\d{3}))\.[1-9]|([3-9]\d{4})\.[1-9]',
+        'dev' => 'regex:Insider.*(2[3-4]\d{3}|260[5-9]\d|26[1-2]\d{2})\.[1-9]',
+        'w11-26h2-dev' => 'regex:Insider.*263\d0',
+        'w11-26h2' => 'regex:^(?:(?!Insider|Server|HCI).)*26300',
+        'w11-26h1' => 'regex:^(?:(?!Insider).)*28000',
+        'w11-25h2-beta' => 'regex:Insider.*262\d0',
+        'w11-25h2' => 'regex:^(?:(?!Insider|Server|HCI).)*26200',
+        'w11-24h2-beta' => 'regex:Insider.*2612\d',
+        'w11-24h2' => 'regex:^(?:(?!Insider|Server|HCI).)*26100',
+        'w11-23h2' => 'regex:^(?:(?!Insider).)*22631',
+        'w11-22h2' => 'regex:^(?:(?!Insider).)*22621',
+        'w11-21h2' => 'regex:^(?:(?!Insider).)*22000',
+        'ws-24h2' => 'regex:(Server|HCI).*26100',
+        'ws-23h2' => '25398',
+        'ws-22h2' => '20349',
+        'ws-21h2' => '20348',
+        'w10-22h2' => '19045',
+        'w10-21h2' => '19044',
+        'w10-1809' => 'regex:^(?:(?!Insider).)*17763',
+    ];
+
+    return isset($map[$category]) ? $map[$category] : $search;
 }
 
 function uupApiPrivateGetFromFileinfo($sortByDate = 0) {
@@ -152,55 +244,70 @@ function uupApiPrivateGetFromFileinfo($sortByDate = 0) {
 function uupListIds($search = null, $sortByDate = 0) {
     uupApiPrintBrand();
 
+    $search = uupApiPrivateNormalizeKnownQuery($search);
     $sortByDate = $sortByDate ? 1 : 0;
 
-    $res = "listid-$sortByDate";
-    $cache = new UupDumpCache($res, false);
-    $builds = $cache->get();
-    $cached = ($builds !== false);
+    $cache = null;
+    $builds = false;
+    $cached = false;
 
-    if(!$cached) {
-        $builds = uupApiPrivateGetFromFileinfo($sortByDate);
-        if($builds === false) return ['error' => 'NO_FILEINFO_DIR'];
-
-        $cache->put($builds, 60);
+    if($search === null || $search === '') {
+        $res = "listid-remote-$sortByDate";
+        $cache = new UupDumpCache($res, false);
+        $builds = $cache->get();
+        $cached = ($builds !== false);
     }
 
-    if(count($builds) && $search != null) {
-        if(!preg_match('/^regex:/', $search)) {
-            $searchSafe = preg_quote($search, '/');
+    if(!$cached) {
+        $builds = uupApiPrivateGetFromRemote($search, $sortByDate);
+        if(isset($builds['error'])) {
+            return $builds;
+        }
 
-            if(preg_match('/^".*"$/', $searchSafe)) {
-                $searchSafe = preg_replace('/^"|"$/', '', $searchSafe);
-            } else {
-                $searchSafe = str_replace(' ', '.*', $searchSafe);
+        if($builds === false) {
+            $builds = uupApiPrivateGetFromFileinfo($sortByDate);
+            if($builds === false) return ['error' => 'NO_FILEINFO_DIR'];
+
+            if(count($builds) && $search != null) {
+                if(!preg_match('/^regex:/', $search)) {
+                    $searchSafe = preg_quote($search, '/');
+
+                    if(preg_match('/^".*"$/', $searchSafe)) {
+                        $searchSafe = preg_replace('/^"|"$/', '', $searchSafe);
+                    } else {
+                        $searchSafe = str_replace(' ', '.*', $searchSafe);
+                    }
+                } else {
+                    $searchSafe = preg_replace('/^regex:/', '', $search);
+                }
+
+                @preg_match("/$searchSafe/", "");
+                if(preg_last_error()) {
+                    return array('error' => 'SEARCH_NO_RESULTS');
+                }
+
+                foreach($builds as $key => $val) {
+                    $buildString[$key] = $val['title'].' '.$val['build'].' '.$val['arch'];
+                }
+
+                $remove = preg_grep('/.*'.$searchSafe.'.*/i', $buildString, PREG_GREP_INVERT);
+                $removeKeys = array_keys($remove);
+
+                foreach($removeKeys as $value) {
+                    unset($builds[$value]);
+                }
+
+                if(empty($builds)) {
+                    return array('error' => 'SEARCH_NO_RESULTS');
+                }
+
+                unset($remove, $removeKeys, $buildString);
             }
-        } else {
-            $searchSafe = preg_replace('/^regex:/', '', $search);
         }
 
-        //I really hope that this will not backfire at me
-        @preg_match("/$searchSafe/", "");
-        if(preg_last_error()) {
-            return array('error' => 'SEARCH_NO_RESULTS');
+        if($cache !== null) {
+            $cache->put($builds, 60);
         }
-
-        foreach($builds as $key => $val) {
-            $buildString[$key] = $val['title'].' '.$val['build'].' '.$val['arch'];
-        }
-
-        $remove = preg_grep('/.*'.$searchSafe.'.*/i', $buildString, PREG_GREP_INVERT);
-        $removeKeys = array_keys($remove);
-
-        foreach($removeKeys as $value) {
-            unset($builds[$value]);
-        }
-
-        if(empty($builds)) {
-            return array('error' => 'SEARCH_NO_RESULTS');
-        }
-
-        unset($remove, $removeKeys, $buildString);
     }
 
     return array(
