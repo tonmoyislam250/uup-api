@@ -25,6 +25,39 @@ require_once 'shared/utils.php';
 require_once dirname(__FILE__).'/sta/main.php';
 require_once dirname(__FILE__).'/sta/genpack.php';
 
+function resolveFeatureUpdateId($updateId, $updateInfo) {
+    if(empty($updateInfo['title']) || empty($updateInfo['build'])) {
+        return $updateId;
+    }
+
+    if(!preg_match('/Cumulative Update/i', $updateInfo['title'])) {
+        return $updateId;
+    }
+
+    $builds = uupListIds($updateInfo['build']);
+    if(isset($builds['error']) || empty($builds['builds'])) {
+        return $updateId;
+    }
+
+    foreach($builds['builds'] as $val) {
+        if(empty($val['title']) || empty($val['uuid'])) {
+            continue;
+        }
+
+        if(!preg_match('/Feature update/i', $val['title'])) {
+            continue;
+        }
+
+        if(isset($updateInfo['arch']) && isset($val['arch']) && $updateInfo['arch'] != $val['arch']) {
+            continue;
+        }
+
+        return $val['uuid'];
+    }
+
+    return $updateId;
+}
+
 function getLangs($updateId, $s) {
     $langs = uupListLangs($updateId);
     $langsTemp = array();
@@ -53,12 +86,21 @@ if(!checkUpdateIdValidity($updateId)) {
     die();
 }
 
-if($getPacks) {
-    generatePack($updateId);
-}
-
 $updateInfo = uupUpdateInfo($updateId, ignoreFiles: true);
 $updateInfo = isset($updateInfo['info']) ? $updateInfo['info'] : array();
+
+$resolvedUpdateId = resolveFeatureUpdateId($updateId, $updateInfo);
+if($resolvedUpdateId != $updateId) {
+    $updateId = $resolvedUpdateId;
+    $updateInfo = uupUpdateInfo($updateId, ignoreFiles: true);
+    $updateInfo = isset($updateInfo['info']) ? $updateInfo['info'] : array();
+}
+
+if($getPacks) {
+    generatePack($updateId);
+    $updateInfo = uupUpdateInfo($updateId, ignoreFiles: true);
+    $updateInfo = isset($updateInfo['info']) ? $updateInfo['info'] : array();
+}
 
 if(!isset($updateInfo['title'])) {
     $updateTitle = 'Unknown update: '.$updateId;

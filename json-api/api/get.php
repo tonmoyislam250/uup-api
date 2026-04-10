@@ -20,6 +20,7 @@ require_once dirname(__FILE__).'/shared/requests.php';
 require_once dirname(__FILE__).'/shared/packs.php';
 require_once dirname(__FILE__).'/shared/cache.php';
 require_once dirname(__FILE__).'/shared/fileinfo.php';
+require_once dirname(__FILE__).'/updateinfo.php';
 
 /*
 $updateId       = Update Identifier
@@ -54,6 +55,13 @@ function uupGetFiles(
     if($fromCache !== false) return $fromCache;
 
     $info = uupApiReadFileinfo($updateId);
+    if(empty($info)) {
+        $meta = uupUpdateInfo($updateId, ignoreFiles: true);
+        if(isset($meta['info']) && !empty($meta['info'])) {
+            $info = $meta['info'];
+        }
+    }
+
     if(empty($info)) {
         $info = array(
             'ring' => 'WIF',

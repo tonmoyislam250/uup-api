@@ -104,7 +104,7 @@ function composeDeviceAttributes($flight, $ring, $build, $arch, $sku, $type, $fl
     }
 
     $bldnum = explode('.', $build);
-    $bldnum = $bldnum[2];
+    $bldnum = isset($bldnum[2]) ? $bldnum[2] : $bldnum[0];
 
     if($bldnum < 17763) {
         if($ring == 'RP') $flight = 'Current';
@@ -254,7 +254,7 @@ function composeDeviceAttributes($flight, $ring, $build, $arch, $sku, $type, $fl
 // Returns the most possible branch for selected build
 function branchFromBuild($build) {
     $build = explode('.', $build);
-    $build = $build[2];
+    $build = isset($build[2]) ? $build[2] : $build[0];
 
     switch($build) {
         case 15063:
