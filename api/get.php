@@ -571,7 +571,7 @@ function uupGetOfflineFiles($info) {
             $temp['sha1'] = $sha1;
             $temp['sha256'] = $sha256;
             $temp['size'] = $size;
-            $temp['url'] = null;
+            $temp['url'] = isset($val['url']) ? $val['url'] : null;
             $temp['uuid'] = null;
             $temp['expire'] = 0;
             $temp['debug'] = null;

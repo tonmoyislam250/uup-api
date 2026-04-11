@@ -105,8 +105,6 @@ function uupApiPrivateResolvePackSourceId($updateId, $updateInfo) {
     $fallbackId = $updateId;
     $preferredSibling = null;
     $secondarySibling = null;
-    $sourceTitle = isset($updateInfo['title']) ? $updateInfo['title'] : '';
-    $sourceFamily = uupApiPrivateGetTitleFamily($sourceTitle);
 
     foreach($builds['builds'] as $val) {
         if(!isset($val['uuid']) || !isset($val['title'])) {
@@ -119,13 +117,6 @@ function uupApiPrivateResolvePackSourceId($updateId, $updateInfo) {
 
         if($val['uuid'] == $updateId) {
             $fallbackId = $val['uuid'];
-            continue;
-        }
-
-        $candidateFamily = uupApiPrivateGetTitleFamily($val['title']);
-        $familyCompatible = ($sourceFamily === 'generic' || $candidateFamily === 'generic' || $candidateFamily === $sourceFamily);
-
-        if(!$familyCompatible) {
             continue;
         }
 
@@ -158,30 +149,6 @@ function uupApiPrivateResolvePackSourceId($updateId, $updateInfo) {
     }
 
     return $fallbackId;
-}
-
-function uupApiPrivateGetTitleFamily($title) {
-    if(!is_string($title) || $title === '') {
-        return 'generic';
-    }
-
-    if(preg_match('/Azure Stack HCI/i', $title)) {
-        return 'hci';
-    }
-
-    if(preg_match('/server operating system|Windows Server/i', $title)) {
-        return 'server';
-    }
-
-    if(preg_match('/Windows 11/i', $title)) {
-        return 'win11';
-    }
-
-    if(preg_match('/Windows 10/i', $title)) {
-        return 'win10';
-    }
-
-    return 'generic';
 }
 
 function uupApiPrivateImportRemoteFileinfo($updateId, $updateInfo) {

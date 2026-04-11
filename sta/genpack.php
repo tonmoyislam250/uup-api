@@ -42,8 +42,16 @@ function generatePack($updateId, $removedFailed = 0) {
     consoleLogger('Generating packs for '.$updateId.'...');
     $files = uupGetFiles($updateId, 0, 0);
     if(isset($files['error'])) {
-        if($removedFailed != 0) deleteBuildInfo($updateId);
-        return 0;
+        if($files['error'] == 'EMPTY_FILELIST') {
+            consoleLogger('Online file list is empty. Retrying using imported offline metadata...');
+            $files = uupGetFiles($updateId, 0, 0, 2);
+        }
+
+        if(isset($files['error'])) {
+            consoleLogger('Pack generation failed with error: '.$files['error']);
+            if($removedFailed != 0) deleteBuildInfo($updateId);
+            return 0;
+        }
     }
 
     $updateTitle = $files['updateName'];

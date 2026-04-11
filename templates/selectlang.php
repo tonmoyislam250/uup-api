@@ -25,6 +25,13 @@ if(!isset($templateOk)) die();
 
 <?php if($updateArch == 'arm64') styleCluelessUserArm64Warn(); ?>
 
+<?php if(isset($manualGenerationMessage) && is_array($manualGenerationMessage)): ?>
+    <div class="ui <?= htmlentities($manualGenerationMessage['type']) ?> message">
+        <i class="info circle icon"></i>
+        <?= htmlentities($manualGenerationMessage['text']) ?>
+    </div>
+<?php endif; ?>
+
 <div class="ui two columns mobile stackable centered grid">
     <div class="column">
         <h3 class="ui header">
