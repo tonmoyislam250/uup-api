@@ -106,6 +106,10 @@ function uupApiPrivateResolvePackSourceId($updateId, $updateInfo) {
     $preferredSibling = null;
     $secondarySibling = null;
 
+    $sourceTitle = isset($updateInfo['title']) ? $updateInfo['title'] : '';
+    $sourceFamily = uupApiPrivateTitleFamily($sourceTitle);
+    $sourceIsCU = uupApiPrivateIsCumulativeTitle($sourceTitle);
+
     foreach($builds['builds'] as $val) {
         if(!isset($val['uuid']) || !isset($val['title'])) {
             continue;
@@ -117,6 +121,17 @@ function uupApiPrivateResolvePackSourceId($updateId, $updateInfo) {
 
         if($val['uuid'] == $updateId) {
             $fallbackId = $val['uuid'];
+            continue;
+        }
+
+        $candidateFamily = uupApiPrivateTitleFamily($val['title']);
+        $candidateIsCU = uupApiPrivateIsCumulativeTitle($val['title']);
+
+        if($sourceFamily !== 'generic' && $candidateFamily !== $sourceFamily) {
+            continue;
+        }
+
+        if($sourceIsCU !== $candidateIsCU) {
             continue;
         }
 
@@ -149,6 +164,40 @@ function uupApiPrivateResolvePackSourceId($updateId, $updateInfo) {
     }
 
     return $fallbackId;
+}
+
+function uupApiPrivateIsCumulativeTitle($title) {
+    return preg_match('/Cumulative Update/i', $title) === 1;
+}
+
+function uupApiPrivateTitleFamily($title) {
+    $title = strtolower($title);
+
+    if(str_contains($title, 'azure stack hci')) {
+        return 'azure_stack_hci';
+    }
+
+    if(str_contains($title, 'windows server') || str_contains($title, 'microsoft server operating system')) {
+        return 'windows_server';
+    }
+
+    if(str_contains($title, 'windows 11')) {
+        return 'windows_11';
+    }
+
+    if(str_contains($title, 'windows 10')) {
+        return 'windows_10';
+    }
+
+    if(str_contains($title, 'cloud pc')) {
+        return 'cloud_pc';
+    }
+
+    if(str_contains($title, '.net framework')) {
+        return 'dotnet';
+    }
+
+    return 'generic';
 }
 
 function uupApiPrivateImportRemoteFileinfo($updateId, $updateInfo) {
