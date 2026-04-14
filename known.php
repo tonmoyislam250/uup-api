@@ -55,7 +55,7 @@ $windows11Builds = $idsPaginated;
 $serverBuilds = [];
 
 $normalizedSearch = uupApiPrivateNormalizeKnownQuery($search);
-$devCategoryRegex = 'regex:Insider.*263\d0';
+$devCategoryRegex = 'regex:Insider.*(263\d0|261\d{2}|22635)\.[1-9]';
 
 if(is_string($normalizedSearch) && strcasecmp($normalizedSearch, $devCategoryRegex) === 0) {
     $windows11Builds = [];
