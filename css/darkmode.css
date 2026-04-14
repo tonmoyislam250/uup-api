@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 .page-header {
-    background-image: url('/uup-api/img/bg_dark.png');
+    background-image: url('../img/bg_dark.png');
     background-color: #000;
 }
 
