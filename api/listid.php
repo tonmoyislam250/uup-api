@@ -33,10 +33,6 @@ function uupApiPrivateInvalidateFileinfoCache() {
 
 function uupApiPrivateGetFromRemote($search = null, $sortByDate = 0) {
     $remoteBase = getenv('UUP_REMOTE_LISTID_URL');
-    if(!$remoteBase) {
-        return false;
-    }
-
     $params = [
         'sortByDate' => $sortByDate ? 1 : 0,
     ];
@@ -45,47 +41,69 @@ function uupApiPrivateGetFromRemote($search = null, $sortByDate = 0) {
         $params['search'] = $search;
     }
 
-    $url = rtrim($remoteBase, '/').'/json-api/listid.php?'.http_build_query($params);
-
-    $req = curl_init($url);
-    curl_setopt($req, CURLOPT_HEADER, 0);
-    curl_setopt($req, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($req, CURLOPT_ENCODING, '');
-    curl_setopt($req, CURLOPT_FOLLOWLOCATION, 1);
-    curl_setopt($req, CURLOPT_CONNECTTIMEOUT, 5);
-    curl_setopt($req, CURLOPT_TIMEOUT, 15);
-    curl_setopt($req, CURLOPT_SSL_VERIFYPEER, 0);
-    curl_setopt($req, CURLOPT_HTTPHEADER, [
-        'User-Agent: UUP dump self-host listid proxy',
-        'Accept: application/json',
-    ]);
-
-    $out = curl_exec($req);
-    $code = curl_getinfo($req, CURLINFO_RESPONSE_CODE);
-    curl_close($req);
-
-    if($out === false || $code !== 200) {
-        return false;
+    $remoteBases = [];
+    if($remoteBase) {
+        $remoteBases[] = $remoteBase;
     }
 
-    $data = json_decode($out, true);
-    if(!is_array($data)) {
-        return false;
+    $remoteBases[] = 'https://uup-api-production.up.railway.app';
+    $remoteBases[] = 'https://uupdump.net';
+    $remoteBases = array_values(array_unique($remoteBases));
+
+    foreach($remoteBases as $base) {
+        $url = rtrim($base, '/').'/json-api/listid.php?'.http_build_query($params);
+
+        $remoteHost = parse_url($url, PHP_URL_HOST);
+        $localHost = isset($_SERVER['HTTP_HOST']) ? strtolower(preg_replace('/:.*/', '', $_SERVER['HTTP_HOST'])) : '';
+
+        if($remoteHost && $localHost && strtolower($remoteHost) === $localHost) {
+            continue;
+        }
+
+        $req = curl_init($url);
+        curl_setopt($req, CURLOPT_HEADER, 0);
+        curl_setopt($req, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($req, CURLOPT_ENCODING, '');
+        curl_setopt($req, CURLOPT_FOLLOWLOCATION, 1);
+        curl_setopt($req, CURLOPT_CONNECTTIMEOUT, 5);
+        curl_setopt($req, CURLOPT_TIMEOUT, 15);
+        curl_setopt($req, CURLOPT_SSL_VERIFYPEER, 0);
+        curl_setopt($req, CURLOPT_HTTPHEADER, [
+            'User-Agent: UUP dump self-host listid proxy',
+            'Accept: application/json',
+        ]);
+
+        $out = curl_exec($req);
+        $code = curl_getinfo($req, CURLINFO_RESPONSE_CODE);
+        curl_close($req);
+
+        if($out === false || $code !== 200) {
+            continue;
+        }
+
+        $data = json_decode($out, true);
+        if(!is_array($data)) {
+            continue;
+        }
+
+        if(isset($data['response']) && is_array($data['response'])) {
+            $data = $data['response'];
+        }
+
+        if(isset($data['error'])) {
+            return ['error' => $data['error']];
+        }
+
+        if(!isset($data['builds']) || !is_array($data['builds'])) {
+            continue;
+        }
+
+        if(!empty($data['builds'])) {
+            return array_values($data['builds']);
+        }
     }
 
-    if(isset($data['response']) && is_array($data['response'])) {
-        $data = $data['response'];
-    }
-
-    if(isset($data['error'])) {
-        return ['error' => $data['error']];
-    }
-
-    if(!isset($data['builds']) || !is_array($data['builds'])) {
-        return false;
-    }
-
-    return array_values($data['builds']);
+    return false;
 }
 
 function uupApiPrivateNormalizeKnownQuery($search) {
