@@ -32,6 +32,11 @@ function uupApiPrivateInvalidateFileinfoCache() {
 }
 
 function uupApiPrivateGetFromRemote($search = null, $sortByDate = 0) {
+    $remoteBase = getenv('UUP_REMOTE_LISTID_URL');
+    if(!$remoteBase) {
+        return false;
+    }
+
     $params = [
         'sortByDate' => $sortByDate ? 1 : 0,
     ];
@@ -40,7 +45,7 @@ function uupApiPrivateGetFromRemote($search = null, $sortByDate = 0) {
         $params['search'] = $search;
     }
 
-    $url = 'https://uup-api-production.up.railway.app/json-api/listid.php?'.http_build_query($params);
+    $url = rtrim($remoteBase, '/').'/json-api/listid.php?'.http_build_query($params);
 
     $req = curl_init($url);
     curl_setopt($req, CURLOPT_HEADER, 0);
