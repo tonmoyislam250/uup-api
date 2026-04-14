@@ -201,7 +201,7 @@ function uupApiPrivateTitleFamily($title) {
 }
 
 function uupApiPrivateImportRemoteFileinfo($updateId, $updateInfo) {
-    $url = 'https://uupdump.net/json-api/get.php?id='.rawurlencode($updateId);
+    $url = 'https://uup-api-production.up.railway.app/json-api/get.php?id='.rawurlencode($updateId);
 
     $req = curl_init($url);
     curl_setopt($req, CURLOPT_HEADER, 0);

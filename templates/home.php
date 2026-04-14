@@ -32,14 +32,14 @@ if(!isset($templateOk)) die();
 
 <div class="quick-search-buttons">
     <div class="ui tiny compact menu">
-        <a class="item" href="known.php?q=regex:Insider.*(2((2(?!000|6[2-4][1-9])\d{3})|(5(?!398)\d{3})|[6-9]\d{3}))\.[1-9]|([3-9]\d{4})\.[1-9]">
+        <a class="item" href="known.php?q=category:canary">
             <i class="search icon"></i>
             <?= $s['channel_canary'] ?>
         </a>
     </div>
 
     <div class="ui tiny compact menu">
-        <a class="item" href="known.php?q=regex:Insider.*(2[3-4]\d{3}|260[5-9]\d|26[1-2]\d{2})\.[1-9]">
+        <a class="item" href="known.php?q=category:dev">
             <i class="search icon"></i>
             <?= $s['channel_dev'] ?>
         </a>
@@ -52,34 +52,31 @@ if(!isset($templateOk)) die();
             <i class="dropdown icon"></i>
 
             <div class="menu">
-                <a class="item" href="known.php?q=regex:Insider.*263\d0">
-                    26H2 Dev
+                <a class="item" href="known.php?q=category:w11-25h2-dev">
+                    25H2 Dev
                 </a>
-                <a class="item" href="known.php?q=regex:^(?:(?!Insider|Server|HCI).)*26300">
-                    26H2
-                </a>
-                <a class="item" href="known.php?q=regex:^(?:(?!Insider).)*28000">
+                <a class="item" href="known.php?q=category:w11-26h1">
                     26H1
                 </a>
-                <a class="item" href="known.php?q=regex:Insider.*262\d0">
+                <a class="item" href="known.php?q=category:w11-25h2-beta">
                     25H2 Beta
                 </a>
-                <a class="item" href="known.php?q=regex:^(?:(?!Insider|Server|HCI).)*26200">
+                <a class="item" href="known.php?q=category:w11-25h2">
                     25H2
                 </a>
-                <a class="item" href="known.php?q=regex:Insider.*2612\d">
+                <a class="item" href="known.php?q=category:w11-24h2-beta">
                     24H2 Beta
                 </a>
-                <a class="item" href="known.php?q=regex:^(?:(?!Insider|Server|HCI).)*26100">
+                <a class="item" href="known.php?q=category:w11-24h2">
                     24H2
                 </a>
-                <a class="item" href="known.php?q=regex:^(?:(?!Insider).)*22631">
+                <a class="item" href="known.php?q=category:w11-23h2">
                     23H2
                 </a>
-                <a class="item" href="known.php?q=regex:^(?:(?!Insider).)*22621">
+                <a class="item" href="known.php?q=category:w11-22h2">
                     22H2
                 </a>
-                <a class="item" href="known.php?q=regex:^(?:(?!Insider).)*22000">
+                <a class="item" href="known.php?q=category:w11-21h2">
                     21H2
                 </a>
             </div>
@@ -93,16 +90,16 @@ if(!isset($templateOk)) die();
             <i class="dropdown icon"></i>
 
             <div class="menu">
-                <a class="item" href="known.php?q=regex:(Server|HCI).*26100">
+                <a class="item" href="known.php?q=category:ws-24h2">
                     24H2
                 </a>
-                <a class="item" href="known.php?q=25398">
+                <a class="item" href="known.php?q=category:ws-23h2">
                     23H2
                 </a>
-                <a class="item" href="known.php?q=20349">
+                <a class="item" href="known.php?q=category:ws-22h2">
                     22H2
                 </a>
-                <a class="item" href="known.php?q=20348">
+                <a class="item" href="known.php?q=category:ws-21h2">
                     21H2
                 </a>
             </div>
@@ -116,13 +113,13 @@ if(!isset($templateOk)) die();
             <i class="dropdown icon"></i>
 
             <div class="menu">
-                <a class="item" href="known.php?q=19045">
+                <a class="item" href="known.php?q=category:w10-22h2">
                     22H2
                 </a>
-                <a class="item" href="known.php?q=19044">
+                <a class="item" href="known.php?q=category:w10-21h2">
                     21H2
                 </a>
-                <a class="item" href="known.php?q=regex:^(?:(?!Insider).)*17763">
+                <a class="item" href="known.php?q=category:w10-1809">
                     1809
                 </a>
             </div>

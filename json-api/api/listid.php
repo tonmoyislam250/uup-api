@@ -40,7 +40,7 @@ function uupApiPrivateGetFromRemote($search = null, $sortByDate = 0) {
         $params['search'] = $search;
     }
 
-    $url = 'https://uupdump.net/json-api/listid.php?'.http_build_query($params);
+    $url = 'https://uup-api-production.up.railway.app/json-api/listid.php?'.http_build_query($params);
 
     $req = curl_init($url);
     curl_setopt($req, CURLOPT_HEADER, 0);
@@ -96,8 +96,9 @@ function uupApiPrivateNormalizeKnownQuery($search) {
 
     $map = [
         'canary' => 'regex:Insider.*(2((2(?!000|6[2-4][1-9])\d{3})|(5(?!398)\d{3})|[6-9]\d{3}))\.[1-9]|([3-9]\d{4})\.[1-9]',
-        'dev' => 'regex:Insider.*(2[3-4]\d{3}|260[5-9]\d|26[1-2]\d{2})\.[1-9]',
+        'dev' => 'regex:Insider.*(263\d0|261\d{2}|22635)\.[1-9]',
         'w11-26h2-dev' => 'regex:Insider.*263\d0',
+        'w11-25h2-dev' => 'regex:Insider.*263\d0',
         'w11-26h2' => 'regex:^(?:(?!Insider|Server|HCI).)*26300',
         'w11-26h1' => 'regex:^(?:(?!Insider).)*28000',
         'w11-25h2-beta' => 'regex:Insider.*262\d0',
@@ -241,6 +242,47 @@ function uupApiPrivateGetFromFileinfo($sortByDate = 0) {
     return $builds;
 }
 
+function uupApiPrivateFilterBuildsBySearch($builds, $search) {
+    if(!is_array($builds) || !count($builds) || $search === null || $search === '') {
+        return $builds;
+    }
+
+    if(!preg_match('/^regex:/', $search)) {
+        $searchSafe = preg_quote($search, '/');
+
+        if(preg_match('/^".*"$/', $searchSafe)) {
+            $searchSafe = preg_replace('/^"|"$/', '', $searchSafe);
+        } else {
+            $searchSafe = str_replace(' ', '.*', $searchSafe);
+        }
+    } else {
+        $searchSafe = preg_replace('/^regex:/', '', $search);
+    }
+
+    @preg_match("/$searchSafe/", "");
+    if(preg_last_error()) {
+        return array('error' => 'SEARCH_NO_RESULTS');
+    }
+
+    $buildString = [];
+    foreach($builds as $key => $val) {
+        $buildString[$key] = $val['title'].' '.$val['build'].' '.$val['arch'];
+    }
+
+    $remove = preg_grep('/.*'.$searchSafe.'.*/i', $buildString, PREG_GREP_INVERT);
+    $removeKeys = array_keys($remove);
+
+    foreach($removeKeys as $value) {
+        unset($builds[$value]);
+    }
+
+    if(empty($builds)) {
+        return array('error' => 'SEARCH_NO_RESULTS');
+    }
+
+    return $builds;
+}
+
 function uupListIds($search = null, $sortByDate = 0) {
     uupApiPrintBrand();
 
@@ -264,44 +306,22 @@ function uupListIds($search = null, $sortByDate = 0) {
             return $builds;
         }
 
+        if($builds !== false) {
+            $builds = uupApiPrivateFilterBuildsBySearch($builds, $search);
+            if(isset($builds['error'])) {
+                return $builds;
+            }
+        }
+
         if($builds === false) {
             $builds = uupApiPrivateGetFromFileinfo($sortByDate);
             if($builds === false) return ['error' => 'NO_FILEINFO_DIR'];
 
-            if(count($builds) && $search != null) {
-                if(!preg_match('/^regex:/', $search)) {
-                    $searchSafe = preg_quote($search, '/');
-
-                    if(preg_match('/^".*"$/', $searchSafe)) {
-                        $searchSafe = preg_replace('/^"|"$/', '', $searchSafe);
-                    } else {
-                        $searchSafe = str_replace(' ', '.*', $searchSafe);
-                    }
-                } else {
-                    $searchSafe = preg_replace('/^regex:/', '', $search);
+            if($search != null) {
+                $builds = uupApiPrivateFilterBuildsBySearch($builds, $search);
+                if(isset($builds['error'])) {
+                    return $builds;
                 }
-
-                @preg_match("/$searchSafe/", "");
-                if(preg_last_error()) {
-                    return array('error' => 'SEARCH_NO_RESULTS');
-                }
-
-                foreach($builds as $key => $val) {
-                    $buildString[$key] = $val['title'].' '.$val['build'].' '.$val['arch'];
-                }
-
-                $remove = preg_grep('/.*'.$searchSafe.'.*/i', $buildString, PREG_GREP_INVERT);
-                $removeKeys = array_keys($remove);
-
-                foreach($removeKeys as $value) {
-                    unset($builds[$value]);
-                }
-
-                if(empty($builds)) {
-                    return array('error' => 'SEARCH_NO_RESULTS');
-                }
-
-                unset($remove, $removeKeys, $buildString);
             }
         }
 
