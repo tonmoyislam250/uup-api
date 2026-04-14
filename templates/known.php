@@ -33,6 +33,7 @@ if(!isset($templateOk)) die();
         </div>
         <div class="field">
             <div class="ui checkbox">
+                <input type="hidden" name="sort" value="0">
                 <input type="checkbox" name="sort" value="1" <?= $dateSortChecked ?>>
                 <label><?= $s['sortByDate'] ?></label>
             </div>
@@ -45,35 +46,99 @@ if(!isset($templateOk)) die();
     <?php printf($s['weFoundBuilds'], $count); ?>
 </div>
 
-<table class="ui celled striped table">
-    <thead>
-        <tr>
-            <th><?= $s['build'] ?></th>
-            <th><?= $s['arch'] ?></th>
-            <th><?= $s['dateAdded'] ?></th>
-        </tr>
-    </thead>
-    <?php foreach($idsPaginated as $val): ?>
-        <?php $arch = $val['arch']; ?>
-        <?php if($arch == 'amd64') $arch = 'x64'; ?>
+<?php if(isset($splitDevFamilies) && $splitDevFamilies): ?>
+    <h4 class="ui header">Windows 11</h4>
+    <table class="ui celled striped table">
+        <thead>
+            <tr>
+                <th><?= $s['build'] ?></th>
+                <th><?= $s['arch'] ?></th>
+                <th><?= $s['dateAdded'] ?></th>
+            </tr>
+        </thead>
+        <?php foreach($windows11Builds as $val): ?>
+            <?php $arch = $val['arch']; ?>
+            <?php if($arch == 'amd64') $arch = 'x64'; ?>
 
-        <tr><td>
-            <i class="windows icon"></i>
-            <a href="./selectlang.php?id=<?= htmlentities($val['uuid']) ?>">
-                <?= htmlentities($val['title']) ?> <?= htmlentities($val['arch']) ?>
-            </a>
-            </td><td>
-                <?= htmlentities($arch) ?>
-            </td><td>
+            <tr><td>
+                <i class="windows icon"></i>
+                <a href="./selectlang.php?id=<?= htmlentities($val['uuid']) ?>">
+                    <?= htmlentities($val['title']) ?> <?= htmlentities($val['arch']) ?>
+                </a>
+                </td><td>
+                    <?= htmlentities($arch) ?>
+                </td><td>
 
-            <?php if($val['created'] == null): ?>
-                <?= $s['unknown'] ?>
-            <?php else: ?>
-                <?= date("Y-m-d H:i:s T", $val['created']) ?>
-            <?php endif; ?>
-        </td></tr>
-    <?php endforeach; ?>
-</table>
+                <?php if($val['created'] == null): ?>
+                    <?= $s['unknown'] ?>
+                <?php else: ?>
+                    <?= date("Y-m-d H:i:s T", $val['created']) ?>
+                <?php endif; ?>
+            </td></tr>
+        <?php endforeach; ?>
+    </table>
+
+    <h4 class="ui header">Windows Server</h4>
+    <table class="ui celled striped table">
+        <thead>
+            <tr>
+                <th><?= $s['build'] ?></th>
+                <th><?= $s['arch'] ?></th>
+                <th><?= $s['dateAdded'] ?></th>
+            </tr>
+        </thead>
+        <?php foreach($serverBuilds as $val): ?>
+            <?php $arch = $val['arch']; ?>
+            <?php if($arch == 'amd64') $arch = 'x64'; ?>
+
+            <tr><td>
+                <i class="windows icon"></i>
+                <a href="./selectlang.php?id=<?= htmlentities($val['uuid']) ?>">
+                    <?= htmlentities($val['title']) ?> <?= htmlentities($val['arch']) ?>
+                </a>
+                </td><td>
+                    <?= htmlentities($arch) ?>
+                </td><td>
+
+                <?php if($val['created'] == null): ?>
+                    <?= $s['unknown'] ?>
+                <?php else: ?>
+                    <?= date("Y-m-d H:i:s T", $val['created']) ?>
+                <?php endif; ?>
+            </td></tr>
+        <?php endforeach; ?>
+    </table>
+<?php else: ?>
+    <table class="ui celled striped table">
+        <thead>
+            <tr>
+                <th><?= $s['build'] ?></th>
+                <th><?= $s['arch'] ?></th>
+                <th><?= $s['dateAdded'] ?></th>
+            </tr>
+        </thead>
+        <?php foreach($idsPaginated as $val): ?>
+            <?php $arch = $val['arch']; ?>
+            <?php if($arch == 'amd64') $arch = 'x64'; ?>
+
+            <tr><td>
+                <i class="windows icon"></i>
+                <a href="./selectlang.php?id=<?= htmlentities($val['uuid']) ?>">
+                    <?= htmlentities($val['title']) ?> <?= htmlentities($val['arch']) ?>
+                </a>
+                </td><td>
+                    <?= htmlentities($arch) ?>
+                </td><td>
+
+                <?php if($val['created'] == null): ?>
+                    <?= $s['unknown'] ?>
+                <?php else: ?>
+                    <?= date("Y-m-d H:i:s T", $val['created']) ?>
+                <?php endif; ?>
+            </td></tr>
+        <?php endforeach; ?>
+    </table>
+<?php endif; ?>
 
 <a class="ui <?= $page == 1 ? 'disabled' : '' ?> left floated labeled icon button" href="<?= $prevPageUrl ?>">
     <i class="arrow left icon"></i>

@@ -17,7 +17,7 @@ limitations under the License.
 
 $search = isset($_GET['q']) ? $_GET['q'] : null;
 $page = isset($_GET['p']) ? intval($_GET['p']) : 1;
-$sort = isset($_GET['sort']) ? $_GET['sort'] : null;
+$sort = isset($_GET['sort']) ? intval($_GET['sort']) : 1;
 
 require_once 'api/listid.php';
 require_once 'shared/style.php';
@@ -49,6 +49,30 @@ if($page < 1 || $page > $pages) {
 }
 
 $idsPaginated = array_splice($ids, $startItem, $perPage);
+
+$splitDevFamilies = false;
+$windows11Builds = $idsPaginated;
+$serverBuilds = [];
+
+$normalizedSearch = uupApiPrivateNormalizeKnownQuery($search);
+$devCategoryRegex = 'regex:Insider.*(2[3-4]\d{3}|260[5-9]\d|26[1-2]\d{2})\.[1-9]';
+
+if(is_string($normalizedSearch) && strcasecmp($normalizedSearch, $devCategoryRegex) === 0) {
+    $windows11Builds = [];
+    $serverBuilds = [];
+
+    foreach($idsPaginated as $val) {
+        $title = isset($val['title']) ? $val['title'] : '';
+
+        if(preg_match('/Server|HCI/i', $title)) {
+            $serverBuilds[] = $val;
+        } else {
+            $windows11Builds[] = $val;
+        }
+    }
+
+    $splitDevFamilies = !empty($windows11Builds) && !empty($serverBuilds);
+}
 
 if($search != null) {
     $pageTitle = "$search - {$s['browseKnown']}";
