@@ -96,7 +96,7 @@ function uupApiPrivateNormalizeKnownQuery($search) {
 
     $map = [
         'canary' => 'regex:Insider.*(2((2(?!000|6[2-4][1-9])\d{3})|(5(?!398)\d{3})|[6-9]\d{3}))\.[1-9]|([3-9]\d{4})\.[1-9]',
-        'dev' => 'regex:Insider.*(263\d0|261\d{2}|22635)\.[1-9]',
+        'dev' => 'regex:Insider.*263\d0',
         'w11-26h2-dev' => 'regex:Insider.*263\d0',
         'w11-25h2-dev' => 'regex:Insider.*263\d0',
         'w11-26h2' => 'regex:^(?:(?!Insider|Server|HCI).)*26300',
